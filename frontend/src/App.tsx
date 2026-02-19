@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import Meals from './pages/Meals';
 import RecipeDetails from './pages/RecipeDetails';
+import InProgress from './pages/InProgress';
 
 function App() {
   return (
@@ -11,6 +12,9 @@ function App() {
 
       {/* Rota Dinâmica (:id pega qualquer código que vier na URL) */}
       <Route path="/meals/:id" element={<RecipeDetails />} />
+
+      {/* Nova Rota de Progresso */}
+      <Route path="/meals/:id/in-progress" element={<InProgress />} />
     </Routes>
   );
 }

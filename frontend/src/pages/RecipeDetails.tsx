@@ -175,8 +175,11 @@ function RecipeDetails() {
             </div>
           )}
 
-          {/* Botão de Finalizar (Decorativo por enquanto) */}
-          <button className="w-full bg-secondary text-white font-bold py-4 rounded-xl shadow-md hover:bg-green-600 transition-all transform hover:-translate-y-1">
+          {/* Botão de Iniciar Receita */}
+          <button 
+            onClick={() => navigate(`/meals/${id}/in-progress`)} // <--- Agora leva para a tela nova!
+            className="w-full bg-secondary text-white font-bold py-4 rounded-xl shadow-md hover:bg-green-600 transition-all transform hover:-translate-y-1"
+          >
             Iniciar Receita
           </button>
         </div>
