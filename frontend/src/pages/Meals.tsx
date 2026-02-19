@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // <--- Importação nova!
 import { fetchMeals, fetchCategories, fetchByCategory } from '../services/mealsService';
 
 /**
@@ -24,6 +25,8 @@ interface Category {
  * Exibe a lista de receitas, barra de busca e filtros por categoria.
  */
 function Meals() {
+  const navigate = useNavigate(); // <--- Hook de navegação
+  
   // Estados para armazenar dados da API
   const [meals, setMeals] = useState<Meal[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -40,7 +43,6 @@ function Meals() {
     const loadInitialData = async () => {
       try {
         setIsLoading(true);
-        // Executa as duas requisições em paralelo para ganhar performance
         const [mealsData, categoriesData] = await Promise.all([
           fetchMeals(),
           fetchCategories()
@@ -66,7 +68,6 @@ function Meals() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      // Limpa a categoria selecionada pois é uma nova busca global
       setSelectedCategory('');
       const data = await fetchMeals(searchTerm);
       setMeals(data || []);
@@ -79,19 +80,16 @@ function Meals() {
 
   /**
    * Filtra as receitas ao clicar em uma categoria.
-   * Se clicar na mesma categoria já selecionada, limpa o filtro.
    * @param {string} category - Nome da categoria clicada.
    */
   const handleCategoryClick = async (category: string) => {
     setIsLoading(true);
     try {
       if (selectedCategory === category) {
-        // Se já estava selecionado, remove o filtro e busca tudo
         setSelectedCategory('');
         const data = await fetchMeals();
         setMeals(data || []);
       } else {
-        // Aplica o novo filtro
         setSelectedCategory(category);
         const data = await fetchByCategory(category);
         setMeals(data || []);
@@ -103,21 +101,26 @@ function Meals() {
     }
   };
 
+  /**
+   * Redireciona para a tela de detalhes da receita.
+   * @param {string} id - ID da receita clicada.
+   */
+  const handleMealClick = (id: string) => {
+    navigate(`/meals/${id}`); // <--- A Mágica acontece aqui!
+  };
+
   return (
     <div className="min-h-screen bg-cream text-charcoal pb-20 font-sans">
       
       {/* Header Fixo com Busca */}
       <header className="bg-white p-6 shadow-sm border-b border-sand sticky top-0 z-20">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-4 justify-between items-center">
-          
-          {/* Logo */}
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold text-secondary">
               Smart<span className="text-primary">Cook</span>
             </span>
           </div>
 
-          {/* Barra de Busca */}
           <form onSubmit={handleSearch} className="w-full md:w-1/2 relative">
             <input
               type="text"
@@ -136,7 +139,7 @@ function Meals() {
         </div>
       </header>
 
-      {/* Lista de Categorias (Scroll Horizontal) */}
+      {/* Lista de Categorias */}
       <div className="max-w-5xl mx-auto p-6 overflow-x-auto whitespace-nowrap scrollbar-hide">
         <div className="flex gap-3">
           {categories.map((cat) => (
@@ -146,8 +149,8 @@ function Meals() {
               className={`
                 px-6 py-2 rounded-full text-sm font-bold transition-all border
                 ${selectedCategory === cat.strCategory
-                  ? 'bg-primary text-white border-primary shadow-md' // Estilo Ativo
-                  : 'bg-white text-gray-500 border-sand hover:bg-gray-50 hover:border-primary' // Estilo Inativo
+                  ? 'bg-primary text-white border-primary shadow-md'
+                  : 'bg-white text-gray-500 border-sand hover:bg-gray-50 hover:border-primary'
                 }
               `}
             >
@@ -182,9 +185,9 @@ function Meals() {
                 {meals.map((meal) => (
                   <div 
                     key={meal.idMeal}
+                    onClick={() => handleMealClick(meal.idMeal)} // <--- Clique adicionado no CARD
                     className="bg-white rounded-3xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-sand group cursor-pointer"
                   >
-                    {/* Imagem */}
                     <div className="relative h-56 overflow-hidden">
                       <img
                         src={meal.strMealThumb}
@@ -192,13 +195,11 @@ function Meals() {
                         loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                       />
-                      {/* Badge flutuante */}
                       <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-secondary shadow-sm">
                         {meal.strCategory || selectedCategory || 'Geral'}
                       </div>
                     </div>
 
-                    {/* Conteúdo */}
                     <div className="p-6">
                       <h3 className="font-bold text-xl text-charcoal mb-2 line-clamp-1 group-hover:text-primary transition-colors">
                         {meal.strMeal}

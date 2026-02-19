@@ -53,3 +53,24 @@ export const filterByCategory = async (category: string) => {
     throw new Error('Timeout ou erro no Gateway da API Externa');
   }
 };
+
+/**
+ * Busca os detalhes completos de uma refeição pelo seu ID.
+ * * @param {string} id - O ID da refeição (ex: 52772).
+ * @returns {Promise<any>} Objeto com os detalhes da refeição ou null se não encontrar.
+ */
+export const getMealById = async (id: string) => {
+  try {
+    const response = await axios.get(`${API_BASE}/lookup.php?i=${id}`);
+    const meals = response.data.meals;
+    
+    if (!meals || meals.length === 0) {
+      throw new Error('Refeição não encontrada');
+    }
+
+    return meals[0];
+  } catch (error) {
+    console.error(`Erro ao buscar refeição com ID "${id}":`, error);
+    throw new Error('Timeout ou erro no Gateway da API Externa');
+  }
+};

@@ -56,3 +56,17 @@ export const fetchByCategory = async (category: string) => {
   if (!response.ok) throw new Error('Falha ao filtrar refeições');
   return response.json();
 };
+
+/**
+ * Busca os detalhes de uma receita específica pelo ID.
+ * * @param {string} id - O ID da receita (ex: 52772).
+ * @returns {Promise<any>} Objeto com os detalhes da receita.
+ */
+export const fetchMealById = async (id: string) => {
+  const response = await fetch(`${API_URL}/meals/${id}`, {
+    headers: getAuthHeaders()
+  });
+
+  if (!response.ok) throw new Error('Falha ao buscar detalhes da receita');
+  return response.json();
+};

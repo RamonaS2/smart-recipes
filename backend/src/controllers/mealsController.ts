@@ -56,3 +56,20 @@ export const filterBy = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Erro Interno do Servidor ao filtrar refeições' });
   }
 };
+
+/**
+ * GET /meals/:id
+ * Busca uma refeição específica pelo ID.
+ */
+export const getById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    // CORREÇÃO AQUI: Forçamos o tipo para string para acalmar o TypeScript
+    const meal = await mealsService.getMealById(id as string);
+    
+    return res.status(200).json(meal);
+  } catch (error) {
+    return res.status(404).json({ message: 'Receita não encontrada' });
+  }
+};
