@@ -3,6 +3,7 @@ import Login from './pages/Login';
 import Meals from './pages/Meals';
 import RecipeDetails from './pages/RecipeDetails';
 import InProgress from './pages/InProgress';
+import DoneRecipes from './pages/DoneRecipes';
 
 function App() {
   return (
@@ -15,6 +16,9 @@ function App() {
 
       {/* Nova Rota de Progresso */}
       <Route path="/meals/:id/in-progress" element={<InProgress />} />
+
+      {/* Rota para as receitas finalizadas */}
+      <Route path="/done-recipes" element={<DoneRecipes />} />
     </Routes>
   );
 }

@@ -19,8 +19,6 @@ function InProgress() {
         const data = await fetchMealById(id);
         setMeal(data);
 
-        // Recupera o progresso do localStorage
-        // Formato salvo: { "52772": ["Salt", "Chicken"], "52999": ["Sugar"] }
         const savedProgress = JSON.parse(localStorage.getItem('inProgressRecipes') || '{}');
         if (savedProgress[id]) {
           setCheckedIngredients(savedProgress[id]);
@@ -43,12 +41,11 @@ function InProgress() {
       let newChecked;
 
       if (isChecked) {
-        newChecked = prev.filter((item) => item !== ingredientName); // Remove
+        newChecked = prev.filter((item) => item !== ingredientName);
       } else {
-        newChecked = [...prev, ingredientName]; // Adiciona
+        newChecked = [...prev, ingredientName];
       }
 
-      // Salva no localStorage imediatamente
       const currentStorage = JSON.parse(localStorage.getItem('inProgressRecipes') || '{}');
       localStorage.setItem('inProgressRecipes', JSON.stringify({
         ...currentStorage,
@@ -59,10 +56,42 @@ function InProgress() {
     });
   };
 
+  /**
+   * Guarda a receita no histórico de receitas concluídas e navega para a página de Feitas.
+   */
+  const handleFinishRecipe = () => {
+    if (!meal || !id) return;
+
+    // Formata o objeto da receita concluída
+    const doneRecipe = {
+      id: meal.idMeal,
+      type: 'meal',
+      nationality: meal.strArea || '',
+      category: meal.strCategory || '',
+      name: meal.strMeal,
+      image: meal.strMealThumb,
+      doneDate: new Date().toISOString(),
+      tags: meal.strTags ? meal.strTags.split(',') : [],
+    };
+
+    // Vai buscar as receitas já feitas ou cria um array vazio
+    const storedDoneRecipes = JSON.parse(localStorage.getItem('doneRecipes') || '[]');
+    
+    // Verifica se já não estava lá para não duplicar
+    const isAlreadyDone = storedDoneRecipes.some((recipe: any) => recipe.id === id);
+    
+    if (!isAlreadyDone) {
+      localStorage.setItem('doneRecipes', JSON.stringify([...storedDoneRecipes, doneRecipe]));
+    }
+
+    // Navega para a página de receitas concluídas
+    navigate('/done-recipes');
+  };
+
   if (isLoading || !meal) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center animate-pulse text-primary font-bold">
-        Carregando seus ingredientes... 🔪
+        A carregar os seus ingredientes... 🔪
       </div>
     );
   }
@@ -75,7 +104,6 @@ function InProgress() {
   return (
     <div className="min-h-screen bg-cream text-charcoal pb-20 font-sans">
       
-      {/* Imagem de Topo Compacta */}
       <div className="relative h-48 w-full">
         <img src={meal.strMealThumb} alt={meal.strMeal} className="w-full h-full object-cover opacity-80" />
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -93,14 +121,12 @@ function InProgress() {
 
       <main className="max-w-3xl mx-auto p-6 -mt-6 relative z-10">
         
-        {/* Card de Progresso */}
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-sand mb-6">
           <div className="flex justify-between items-end mb-2">
             <h2 className="text-xl font-bold text-primary">Progresso</h2>
             <span className="text-2xl font-bold text-secondary">{progressPercentage}%</span>
           </div>
           
-          {/* Barra de Progresso Visual */}
           <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
             <div 
               className="bg-secondary h-3 rounded-full transition-all duration-500 ease-out" 
@@ -115,7 +141,6 @@ function InProgress() {
           )}
         </div>
 
-        {/* Lista de Ingredientes (Checkboxes) */}
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-sand space-y-4">
           <h3 className="font-bold text-lg text-charcoal mb-4">Passo a Passo (Ingredientes)</h3>
           
@@ -147,10 +172,10 @@ function InProgress() {
           })}
         </div>
 
-        {/* Botão Finalizar */}
+        {/* Botão Finalizar Atualizado com onClick={handleFinishRecipe} */}
         <button
           disabled={!isFinished}
-          onClick={() => navigate('/meals')} // Futuramente, levar para tela de "Receitas Feitas"
+          onClick={handleFinishRecipe}
           className={`
             w-full mt-8 py-4 rounded-xl font-bold text-lg shadow-md transition-all
             ${isFinished 
