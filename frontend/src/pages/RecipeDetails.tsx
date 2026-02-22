@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchMealById } from '../services/mealsService';
 
 /**
- * Interface para tipar a resposta da API (que é dinâmica para ingredientes).
+ * Interface para a estrutura da receita.
  */
 interface MealDetail {
   idMeal: string;
@@ -13,12 +13,12 @@ interface MealDetail {
   strInstructions: string;
   strMealThumb: string;
   strYoutube?: string;
-  [key: string]: string | undefined; // Permite acessar strIngredient1, strMeasure1, etc.
+  [key: string]: string | undefined;
 }
 
 /**
  * Componente de Detalhes da Receita.
- * Exibe foto, ingredientes, instruções e vídeo.
+ * Apresenta a lista de ingredientes, instruções e permite favoritar.
  */
 function RecipeDetails() {
   const { id } = useParams<{ id: string }>();
@@ -26,13 +26,20 @@ function RecipeDetails() {
   
   const [meal, setMeal] = useState<MealDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false); // <--- Novo Estado
 
+  // 1. Carrega os dados da receita e verifica se é favorita
   useEffect(() => {
     const loadMeal = async () => {
       if (!id) return;
       try {
         const data = await fetchMealById(id);
         setMeal(data);
+
+        // Verifica o localStorage
+        const storedFavorites = JSON.parse(localStorage.getItem('favoriteRecipes') || '[]');
+        const isFav = storedFavorites.some((recipe: any) => recipe.id === id);
+        setIsFavorite(isFav);
       } catch (error) {
         console.error('Erro ao carregar detalhes:', error);
       } finally {
@@ -43,32 +50,47 @@ function RecipeDetails() {
   }, [id]);
 
   /**
-   * Helper para montar a lista de ingredientes.
-   * A API retorna strIngredient1, strMeasure1, etc. Transformamos isso em um array.
+   * Alterna o estado de favorito da receita atual e atualiza o localStorage.
    */
+  const toggleFavorite = () => {
+    if (!meal || !id) return;
+
+    const storedFavorites = JSON.parse(localStorage.getItem('favoriteRecipes') || '[]');
+    let updatedFavorites;
+
+    if (isFavorite) {
+      // Remove se já for favorito
+      updatedFavorites = storedFavorites.filter((recipe: any) => recipe.id !== id);
+    } else {
+      // Adiciona se não for favorito
+      const newFavorite = {
+        id: meal.idMeal,
+        type: 'meal',
+        nationality: meal.strArea || '',
+        category: meal.strCategory || '',
+        name: meal.strMeal,
+        image: meal.strMealThumb,
+      };
+      updatedFavorites = [...storedFavorites, newFavorite];
+    }
+
+    localStorage.setItem('favoriteRecipes', JSON.stringify(updatedFavorites));
+    setIsFavorite(!isFavorite);
+  };
+
   const getIngredients = () => {
     if (!meal) return [];
     const ingredients = [];
-    
-    // A API suporta até 20 ingredientes
     for (let i = 1; i <= 20; i++) {
       const ingredient = meal[`strIngredient${i}`];
       const measure = meal[`strMeasure${i}`];
-
       if (ingredient && ingredient.trim() !== '') {
-        ingredients.push({
-          name: ingredient,
-          measure: measure || ''
-        });
+        ingredients.push({ name: ingredient, measure: measure || '' });
       }
     }
     return ingredients;
   };
 
-  /**
-   * Helper para formatar o link do YouTube para embed.
-   * Transforma 'watch?v=VIDEO_ID' em 'embed/VIDEO_ID'.
-   */
   const getEmbedUrl = (url: string) => {
     if (!url) return '';
     const videoId = url.split('v=')[1];
@@ -79,19 +101,10 @@ function RecipeDetails() {
     return `https://www.youtube.com/embed/${videoId}`;
   };
 
-  if (isLoading) {
+  if (isLoading || !meal) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center text-primary font-bold text-xl animate-pulse">
-        Carregando receita... 🥘
-      </div>
-    );
-  }
-
-  if (!meal) {
-    return (
-      <div className="min-h-screen bg-cream flex flex-col items-center justify-center gap-4">
-        <h2 className="text-xl font-bold text-charcoal">Receita não encontrada!</h2>
-        <button onClick={() => navigate('/meals')} className="text-primary underline">Voltar</button>
+      <div className="min-h-screen bg-cream flex items-center justify-center animate-pulse text-primary font-bold">
+        A carregar receita... 🥘
       </div>
     );
   }
@@ -101,38 +114,44 @@ function RecipeDetails() {
   return (
     <div className="min-h-screen bg-cream text-charcoal pb-10">
       
-      {/* Imagem de Capa (Hero) */}
+      {/* Imagem de Capa e Botões Flutuantes */}
       <div className="relative h-80 w-full">
-        <img 
-          src={meal.strMealThumb} 
-          alt={meal.strMeal} 
-          className="w-full h-full object-cover"
-        />
+        <img src={meal.strMealThumb} alt={meal.strMeal} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end">
-          <div className="p-6 max-w-4xl mx-auto w-full">
-            <h1 className="text-4xl font-bold text-white mb-2 shadow-sm">{meal.strMeal}</h1>
-            <div className="flex gap-3 text-sm font-bold text-white/90">
-              <span className="bg-primary px-3 py-1 rounded-full">{meal.strCategory}</span>
-              <span className="bg-secondary px-3 py-1 rounded-full">{meal.strArea}</span>
+          <div className="p-6 max-w-4xl mx-auto w-full flex justify-between items-end">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2 shadow-sm">{meal.strMeal}</h1>
+              <div className="flex gap-3 text-sm font-bold text-white/90">
+                <span className="bg-primary px-3 py-1 rounded-full">{meal.strCategory}</span>
+                <span className="bg-secondary px-3 py-1 rounded-full">{meal.strArea}</span>
+              </div>
             </div>
           </div>
         </div>
+        
+        {/* Botão de Voltar */}
         <button 
           onClick={() => navigate(-1)}
           className="absolute top-4 left-4 bg-white/20 backdrop-blur-md text-white p-3 rounded-full hover:bg-white hover:text-primary transition-all"
         >
           ⬅️ Voltar
         </button>
+
+        {/* Botão de Favorito Adicionado Aqui */}
+        <button 
+          onClick={toggleFavorite}
+          className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:scale-110 transition-transform text-2xl"
+          title="Favoritar receita"
+        >
+          {isFavorite ? '❤️' : '🤍'}
+        </button>
       </div>
 
       <main className="max-w-4xl mx-auto p-6 grid md:grid-cols-3 gap-8 -mt-8 relative z-10">
         
-        {/* Coluna Esquerda: Ingredientes */}
         <div className="md:col-span-1">
           <div className="bg-white p-6 rounded-2xl shadow-lg border border-sand">
-            <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
-              🥕 Ingredientes
-            </h2>
+            <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">🥕 Ingredientes</h2>
             <ul className="space-y-3">
               {ingredients.map((item, index) => (
                 <li key={index} className="flex justify-between items-center text-sm border-b border-gray-100 pb-2 last:border-0">
@@ -144,46 +163,28 @@ function RecipeDetails() {
           </div>
         </div>
 
-        {/* Coluna Direita: Modo de Preparo e Vídeo */}
         <div className="md:col-span-2 space-y-6">
-          
-          {/* Instruções */}
           <div className="bg-white p-8 rounded-2xl shadow-lg border border-sand">
-            <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">
-              👩‍🍳 Modo de Preparo
-            </h2>
-            <p className="whitespace-pre-line text-gray-600 leading-relaxed text-justify">
-              {meal.strInstructions}
-            </p>
+            <h2 className="text-xl font-bold text-primary mb-4 flex items-center gap-2">👩‍🍳 Modo de Preparo</h2>
+            <p className="whitespace-pre-line text-gray-600 leading-relaxed text-justify">{meal.strInstructions}</p>
           </div>
 
-          {/* Vídeo */}
           {meal.strYoutube && (
             <div className="bg-white p-4 rounded-2xl shadow-lg border border-sand">
               <h2 className="text-lg font-bold text-charcoal mb-4 ml-2">Vídeo Tutorial</h2>
               <div className="aspect-video rounded-xl overflow-hidden bg-black">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={getEmbedUrl(meal.strYoutube)}
-                  title="YouTube video player"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
+                <iframe width="100%" height="100%" src={getEmbedUrl(meal.strYoutube)} title="YouTube video" frameBorder="0" allowFullScreen></iframe>
               </div>
             </div>
           )}
 
-          {/* Botão de Iniciar Receita */}
           <button 
-            onClick={() => navigate(`/meals/${id}/in-progress`)} // <--- Agora leva para a tela nova!
+            onClick={() => navigate(`/meals/${id}/in-progress`)} 
             className="w-full bg-secondary text-white font-bold py-4 rounded-xl shadow-md hover:bg-green-600 transition-all transform hover:-translate-y-1"
           >
             Iniciar Receita
           </button>
         </div>
-
       </main>
     </div>
   );

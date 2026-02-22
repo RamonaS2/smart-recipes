@@ -5,6 +5,7 @@ import RecipeDetails from './pages/RecipeDetails';
 import InProgress from './pages/InProgress';
 import DoneRecipes from './pages/DoneRecipes';
 import Profile from './pages/Profile';
+import FavoriteRecipes from './pages/FavoriteRecipes';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
       {/* Rota para as receitas finalizadas */}
       <Route path="/done-recipes" element={<DoneRecipes />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/favorite-recipes" element={<FavoriteRecipes />} />
     </Routes>
   );
 }
