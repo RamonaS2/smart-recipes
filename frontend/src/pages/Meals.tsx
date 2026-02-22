@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // <--- Importação nova!
 import { fetchMeals, fetchCategories, fetchByCategory } from '../services/mealsService';
+import Footer from '../components/Footer';
 
 /**
  * Interface que define a estrutura de uma refeição vinda da API.
@@ -219,6 +220,7 @@ function Meals() {
           </>
         )}
       </main>
+      <Footer />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Footer from '../components/Footer';
 
 /**
  * Interface que define a estrutura de uma receita concluída guardada no localStorage.
@@ -125,6 +126,7 @@ function DoneRecipes() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   );
 }
