@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Footer from '../components/Footer';
+import * as favoriteService from '../services/favoriteService';
 
-/**
- * Interface que define a estrutura de uma receita favorita.
- */
 interface FavoriteRecipe {
   id: string;
+  recipeId: string;
   type: string;
   nationality: string;
   category: string;
@@ -14,34 +13,47 @@ interface FavoriteRecipe {
   image: string;
 }
 
-/**
- * Componente que apresenta a lista de receitas marcadas como favoritas pelo utilizador.
- * Permite a navegação para os detalhes da receita ou a sua remoção da lista.
- * @returns {JSX.Element} Página de Favoritos.
- */
 function FavoriteRecipes() {
   const [favorites, setFavorites] = useState<FavoriteRecipe[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const storedFavorites = JSON.parse(localStorage.getItem('favoriteRecipes') || '[]');
-    setFavorites(storedFavorites);
-  }, []);
+  const userEmail = JSON.parse(localStorage.getItem('user') || '{}').email;
 
-  /**
-   * Remove uma receita da lista de favoritos no estado e no localStorage.
-   * @param {string} id - O ID da receita a remover.
-   */
-  const handleRemoveFavorite = (id: string) => {
-    const updatedFavorites = favorites.filter((recipe) => recipe.id !== id);
-    setFavorites(updatedFavorites);
-    localStorage.setItem('favoriteRecipes', JSON.stringify(updatedFavorites));
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!userEmail) return;
+      try {
+        const data = await favoriteService.getFavorites(userEmail);
+        setFavorites(data);
+      } catch (error) {
+        console.error('Erro ao carregar favoritos:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFavorites();
+  }, [userEmail]);
+
+  const handleRemoveFavorite = async (recipeId: string) => {
+    if (!userEmail) return;
+    try {
+      await favoriteService.removeFavorite(userEmail, recipeId);
+      // Atualiza o estado visualmente removendo a receita da lista
+      setFavorites(favorites.filter((recipe) => recipe.recipeId !== recipeId));
+    } catch (error) {
+      console.error('Erro ao remover favorito:', error);
+      alert('Não foi possível remover.');
+    }
   };
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-cream flex items-center justify-center font-bold text-primary">Carregando... 🍽️</div>;
+  }
 
   return (
     <div className="min-h-screen bg-cream text-charcoal pb-24 font-sans">
-      
-      {/* Cabeçalho */}
       <header className="bg-white p-6 shadow-sm border-b border-sand sticky top-0 z-20">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <h1 className="text-2xl font-bold text-secondary">
@@ -50,7 +62,6 @@ function FavoriteRecipes() {
         </div>
       </header>
 
-      {/* Grelha de Favoritos */}
       <main className="max-w-5xl mx-auto p-6 mt-4">
         {favorites.length === 0 ? (
           <div className="text-center py-20 flex flex-col items-center">
@@ -70,19 +81,13 @@ function FavoriteRecipes() {
                 key={recipe.id}
                 className="bg-white rounded-2xl shadow-sm border border-sand flex overflow-hidden hover:shadow-md transition-shadow relative"
               >
-                {/* Imagem */}
                 <div 
                   className="w-2/5 md:w-1/3 cursor-pointer"
-                  onClick={() => navigate(`/${recipe.type}s/${recipe.id}`)}
+                  onClick={() => navigate(`/${recipe.type}s/${recipe.recipeId}`)}
                 >
-                  <img 
-                    src={recipe.image} 
-                    alt={recipe.name} 
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={recipe.image} alt={recipe.name} className="w-full h-full object-cover" />
                 </div>
 
-                {/* Conteúdo */}
                 <div className="p-4 flex flex-col justify-center w-full">
                   <p className="text-xs font-bold text-gray-400 mb-1">
                     {recipe.nationality} • {recipe.category}
@@ -90,14 +95,13 @@ function FavoriteRecipes() {
                   
                   <h3 
                     className="font-bold text-lg text-charcoal cursor-pointer hover:text-primary transition-colors line-clamp-1 pr-8"
-                    onClick={() => navigate(`/${recipe.type}s/${recipe.id}`)}
+                    onClick={() => navigate(`/${recipe.type}s/${recipe.recipeId}`)}
                   >
                     {recipe.name}
                   </h3>
                   
-                  {/* Botão Remover (Coração Partida) */}
                   <button 
-                    onClick={() => handleRemoveFavorite(recipe.id)}
+                    onClick={() => handleRemoveFavorite(recipe.recipeId)}
                     className="absolute top-4 right-4 text-primary hover:scale-110 transition-transform bg-cream p-2 rounded-full shadow-sm"
                     title="Remover dos favoritos"
                   >
@@ -109,7 +113,6 @@ function FavoriteRecipes() {
           </div>
         )}
       </main>
-
       <Footer />
     </div>
   );

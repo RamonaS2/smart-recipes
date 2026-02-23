@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Meals from './pages/Meals';
 import RecipeDetails from './pages/RecipeDetails';
 import InProgress from './pages/InProgress';
@@ -11,6 +12,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/register" element={<Register />} />
       <Route path="/meals" element={<Meals />} />
 
       {/* Rota Dinâmica (:id pega qualquer código que vier na URL) */}

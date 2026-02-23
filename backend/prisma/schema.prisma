@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Mudamos o provider para mysql
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Tabela de Usuários
+model User {
+  id              String           @id @default(uuid())
+  email           String           @unique
+  password        String
+  favoriteRecipes FavoriteRecipe[] // Relacionamento: 1 usuário tem vários favoritos
+  doneRecipes     DoneRecipe[]     // Relacionamento: 1 usuário tem várias concluídas
+  createdAt       DateTime         @default(now())
+}
+
+// Tabela de Receitas Favoritas
+model FavoriteRecipe {
+  id          String   @id @default(uuid())
+  recipeId    String   // O ID da receita lá na API externa (ex: 52772)
+  type        String   // 'meal' ou 'drink'
+  nationality String?
+  category    String?
+  name        String
+  image       String
+  
+  // Relacionamento com o Usuário
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+
+  // Regra: O mesmo usuário não pode favoritar a mesma receita duas vezes
+  @@unique([userId, recipeId]) 
+}
+
+// Tabela de Receitas Concluídas
+model DoneRecipe {
+  id          String   @id @default(uuid())
+  recipeId    String
+  type        String
+  nationality String?
+  category    String?
+  name        String
+  image       String
+  tags        String?  // Vamos salvar as tags separadas por vírgula
+  doneDate    DateTime @default(now())
+  
+  // Relacionamento com o Usuário
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

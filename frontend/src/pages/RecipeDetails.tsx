@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchMealById } from '../services/mealsService';
+import * as favoriteService from '../services/favoriteService';
 
-/**
- * Interface para a estrutura da receita.
- */
+// ... (Interface MealDetail mantém-se igual)
 interface MealDetail {
   idMeal: string;
   strMeal: string;
@@ -16,69 +15,71 @@ interface MealDetail {
   [key: string]: string | undefined;
 }
 
-/**
- * Componente de Detalhes da Receita.
- * Apresenta a lista de ingredientes, instruções e permite favoritar.
- */
 function RecipeDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
   const [meal, setMeal] = useState<MealDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFavorite, setIsFavorite] = useState(false); // <--- Novo Estado
+  const [isFavorite, setIsFavorite] = useState(false);
+  
+  // Vamos buscar o email do utilizador logado
+  const userEmail = JSON.parse(localStorage.getItem('user') || '{}').email;
 
-  // 1. Carrega os dados da receita e verifica se é favorita
+  // 1. Carrega os dados da receita e verifica no MySQL se é favorita
   useEffect(() => {
-    const loadMeal = async () => {
+    const loadMealAndFavorites = async () => {
       if (!id) return;
       try {
         const data = await fetchMealById(id);
         setMeal(data);
 
-        // Verifica o localStorage
-        const storedFavorites = JSON.parse(localStorage.getItem('favoriteRecipes') || '[]');
-        const isFav = storedFavorites.some((recipe: any) => recipe.id === id);
-        setIsFavorite(isFav);
+        // Verifica os favoritos no Banco de Dados
+        if (userEmail) {
+          const userFavorites = await favoriteService.getFavorites(userEmail);
+          const isFav = userFavorites.some((recipe: any) => recipe.recipeId === id);
+          setIsFavorite(isFav);
+        }
       } catch (error) {
         console.error('Erro ao carregar detalhes:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    loadMeal();
-  }, [id]);
+    loadMealAndFavorites();
+  }, [id, userEmail]);
 
   /**
-   * Alterna o estado de favorito da receita atual e atualiza o localStorage.
+   * Alterna o estado de favorito chamando o Backend.
    */
-  const toggleFavorite = () => {
-    if (!meal || !id) return;
+  const toggleFavorite = async () => {
+    if (!meal || !id || !userEmail) return;
 
-    const storedFavorites = JSON.parse(localStorage.getItem('favoriteRecipes') || '[]');
-    let updatedFavorites;
-
-    if (isFavorite) {
-      // Remove se já for favorito
-      updatedFavorites = storedFavorites.filter((recipe: any) => recipe.id !== id);
-    } else {
-      // Adiciona se não for favorito
-      const newFavorite = {
-        id: meal.idMeal,
-        type: 'meal',
-        nationality: meal.strArea || '',
-        category: meal.strCategory || '',
-        name: meal.strMeal,
-        image: meal.strMealThumb,
-      };
-      updatedFavorites = [...storedFavorites, newFavorite];
+    try {
+      if (isFavorite) {
+        // Remove do Banco de Dados
+        await favoriteService.removeFavorite(userEmail, id);
+        setIsFavorite(false);
+      } else {
+        // Adiciona ao Banco de Dados
+        const recipeData = {
+          recipeId: meal.idMeal,
+          type: 'meal',
+          nationality: meal.strArea || 'Unknown',
+          category: meal.strCategory || 'Unknown',
+          name: meal.strMeal,
+          image: meal.strMealThumb,
+        };
+        await favoriteService.addFavorite(userEmail, recipeData);
+        setIsFavorite(true);
+      }
+    } catch (error) {
+      console.error('Erro ao favoritar:', error);
+      alert('Erro ao atualizar favoritos.');
     }
-
-    localStorage.setItem('favoriteRecipes', JSON.stringify(updatedFavorites));
-    setIsFavorite(!isFavorite);
   };
 
-  const getIngredients = () => {
+  const getIngredients = () => { /* ... mantém igual ... */ 
     if (!meal) return [];
     const ingredients = [];
     for (let i = 1; i <= 20; i++) {
@@ -91,7 +92,7 @@ function RecipeDetails() {
     return ingredients;
   };
 
-  const getEmbedUrl = (url: string) => {
+  const getEmbedUrl = (url: string) => { /* ... mantém igual ... */
     if (!url) return '';
     const videoId = url.split('v=')[1];
     const ampersandPosition = videoId ? videoId.indexOf('&') : -1;
@@ -129,7 +130,6 @@ function RecipeDetails() {
           </div>
         </div>
         
-        {/* Botão de Voltar */}
         <button 
           onClick={() => navigate(-1)}
           className="absolute top-4 left-4 bg-white/20 backdrop-blur-md text-white p-3 rounded-full hover:bg-white hover:text-primary transition-all"
@@ -137,7 +137,7 @@ function RecipeDetails() {
           ⬅️ Voltar
         </button>
 
-        {/* Botão de Favorito Adicionado Aqui */}
+        {/* Botão de Favorito que agora chama a API */}
         <button 
           onClick={toggleFavorite}
           className="absolute top-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-full shadow-lg hover:scale-110 transition-transform text-2xl"

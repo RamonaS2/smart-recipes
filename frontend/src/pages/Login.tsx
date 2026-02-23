@@ -123,7 +123,18 @@ function Login() {
           </button>
         </form>
 
-        <div className="mt-8 text-center">
+        {/* Link para Cadastro - ADICIONADO AQUI */}
+        <div className="mt-8 text-center space-y-4">
+          <p className="text-sm text-gray-500">
+            Ainda não tem uma conta?{' '}
+            <button 
+              onClick={() => navigate('/register')}
+              className="text-secondary font-bold hover:underline"
+            >
+              Cadastre-se
+            </button>
+          </p>
+          
           <p className="text-xs text-gray-400">
             © 2026 Smart Cook Project
           </p>

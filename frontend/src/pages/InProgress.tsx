@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchMealById } from '../services/mealsService';
 import { getIngredients, type MealDetail } from '../utils/recipeUtils';
+import * as doneService from '../services/doneService'; // <--- O nosso novo serviço
 
 function InProgress() {
   const { id } = useParams<{ id: string }>();
@@ -11,7 +12,10 @@ function InProgress() {
   const [checkedIngredients, setCheckedIngredients] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Carrega a Receita e o Progresso Salvo
+  // Vai buscar o email do utilizador logado para associar a receita a ele no MySQL
+  const userEmail = JSON.parse(localStorage.getItem('user') || '{}').email;
+
+  // 1. Carrega a Receita e o Progresso Salvo (do localStorage)
   useEffect(() => {
     const loadData = async () => {
       if (!id) return;
@@ -19,6 +23,7 @@ function InProgress() {
         const data = await fetchMealById(id);
         setMeal(data);
 
+        // O progresso ainda guardamos no localStorage porque é algo temporário
         const savedProgress = JSON.parse(localStorage.getItem('inProgressRecipes') || '{}');
         if (savedProgress[id]) {
           setCheckedIngredients(savedProgress[id]);
@@ -32,7 +37,7 @@ function InProgress() {
     loadData();
   }, [id]);
 
-  // 2. Atualiza o Checkbox e Salva no LocalStorage
+  // 2. Atualiza o Checkbox e Salva o Progresso Localmente
   const toggleIngredient = (ingredientName: string) => {
     if (!id) return;
 
@@ -46,6 +51,7 @@ function InProgress() {
         newChecked = [...prev, ingredientName];
       }
 
+      // Guarda o progresso no localStorage para não perder caso a pessoa feche a aba
       const currentStorage = JSON.parse(localStorage.getItem('inProgressRecipes') || '{}');
       localStorage.setItem('inProgressRecipes', JSON.stringify({
         ...currentStorage,
@@ -57,37 +63,43 @@ function InProgress() {
   };
 
   /**
-   * Guarda a receita no histórico de receitas concluídas e navega para a página de Feitas.
+   * 3. FINALIZAR RECEITA (Agora ligado ao Backend / MySQL)
    */
-  const handleFinishRecipe = () => {
-    if (!meal || !id) return;
+  const handleFinishRecipe = async () => {
+    if (!meal || !id || !userEmail) {
+      alert('Erro de autenticação ou receita não encontrada.');
+      return;
+    }
 
-    // Formata o objeto da receita concluída
+    // Formata o objeto para enviar para o backend
     const doneRecipe = {
-      id: meal.idMeal,
+      recipeId: meal.idMeal,
       type: 'meal',
-      nationality: meal.strArea || '',
-      category: meal.strCategory || '',
+      nationality: meal.strArea || 'Unknown',
+      category: meal.strCategory || 'Unknown',
       name: meal.strMeal,
       image: meal.strMealThumb,
-      doneDate: new Date().toISOString(),
       tags: meal.strTags ? meal.strTags.split(',') : [],
     };
 
-    // Vai buscar as receitas já feitas ou cria um array vazio
-    const storedDoneRecipes = JSON.parse(localStorage.getItem('doneRecipes') || '[]');
-    
-    // Verifica se já não estava lá para não duplicar
-    const isAlreadyDone = storedDoneRecipes.some((recipe: any) => recipe.id === id);
-    
-    if (!isAlreadyDone) {
-      localStorage.setItem('doneRecipes', JSON.stringify([...storedDoneRecipes, doneRecipe]));
-    }
+    try {
+      // 1. Envia para o MySQL via Backend
+      await doneService.addDoneRecipe(userEmail, doneRecipe);
+      
+      // 2. Limpa o progresso local desta receita para que, se a pessoa quiser fazer de novo, comece do zero
+      const currentStorage = JSON.parse(localStorage.getItem('inProgressRecipes') || '{}');
+      delete currentStorage[id];
+      localStorage.setItem('inProgressRecipes', JSON.stringify(currentStorage));
 
-    // Navega para a página de receitas concluídas
-    navigate('/done-recipes');
+      // 3. Navega para a página de receitas concluídas
+      navigate('/done-recipes');
+    } catch (error) {
+      console.error('Erro ao finalizar receita:', error);
+      alert('Ocorreu um erro ao guardar a sua receita no histórico.');
+    }
   };
 
+  // Ecrã de Carregamento
   if (isLoading || !meal) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center animate-pulse text-primary font-bold">
@@ -96,6 +108,7 @@ function InProgress() {
     );
   }
 
+  // Cálculos da Barra de Progresso
   const ingredients = getIngredients(meal);
   const totalIngredients = ingredients.length;
   const progressPercentage = Math.round((checkedIngredients.length / totalIngredients) * 100);
@@ -104,6 +117,7 @@ function InProgress() {
   return (
     <div className="min-h-screen bg-cream text-charcoal pb-20 font-sans">
       
+      {/* Cabeçalho da Receita */}
       <div className="relative h-48 w-full">
         <img src={meal.strMealThumb} alt={meal.strMeal} className="w-full h-full object-cover opacity-80" />
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -121,6 +135,7 @@ function InProgress() {
 
       <main className="max-w-3xl mx-auto p-6 -mt-6 relative z-10">
         
+        {/* Cartão de Progresso */}
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-sand mb-6">
           <div className="flex justify-between items-end mb-2">
             <h2 className="text-xl font-bold text-primary">Progresso</h2>
@@ -141,6 +156,7 @@ function InProgress() {
           )}
         </div>
 
+        {/* Lista de Ingredientes (Checkboxes) */}
         <div className="bg-white p-6 rounded-3xl shadow-lg border border-sand space-y-4">
           <h3 className="font-bold text-lg text-charcoal mb-4">Passo a Passo (Ingredientes)</h3>
           
@@ -172,7 +188,7 @@ function InProgress() {
           })}
         </div>
 
-        {/* Botão Finalizar Atualizado com onClick={handleFinishRecipe} */}
+        {/* Botão Finalizar */}
         <button
           disabled={!isFinished}
           onClick={handleFinishRecipe}
